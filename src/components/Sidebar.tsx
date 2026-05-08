@@ -54,6 +54,7 @@ export function Sidebar() {
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<{ id: string; name: string } | null>(null);
   const [orderedScenarios, setOrderedScenarios] = useState(scenarios);
   const [orderedProjects, setOrderedProjects] = useState(projects);
+  const [orderedTools, setOrderedTools] = useState<typeof installedTools>([]);
   const scenarioReorderQueueRef = useRef<Promise<void>>(Promise.resolve());
   const projectReorderQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [globalWorkspaceOpen, setGlobalWorkspaceOpen] = useState(true);
@@ -71,6 +72,18 @@ export function Sidebar() {
 
   useEffect(() => { setOrderedScenarios(scenarios); }, [scenarios]);
   useEffect(() => { setOrderedProjects(projects); }, [projects]);
+  useEffect(() => {
+    const stored = localStorage.getItem("skills-manager:tool-order");
+    const storedOrder: string[] = stored ? JSON.parse(stored) : [];
+    const sorted = [
+      ...storedOrder.flatMap((key) => {
+        const t = installedTools.find((t) => t.key === key);
+        return t ? [t] : [];
+      }),
+      ...installedTools.filter((t) => !storedOrder.includes(t.key)),
+    ];
+    setOrderedTools(sorted);
+  }, [installedTools]);
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination || result.destination.index === result.source.index) return;
@@ -108,6 +121,15 @@ export function Sidebar() {
           toast.error(t("common.error"));
         }
       });
+  };
+
+  const handleToolDragEnd = (result: DropResult) => {
+    if (!result.destination || result.destination.index === result.source.index) return;
+    const reordered = [...orderedTools];
+    const [moved] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, moved);
+    setOrderedTools(reordered);
+    localStorage.setItem("skills-manager:tool-order", JSON.stringify(reordered.map((t) => t.key)));
   };
 
   const NAV_ITEMS = [
@@ -474,46 +496,80 @@ export function Sidebar() {
           </div>
 
           {globalWorkspaceOpen && (
-            <div className="space-y-0.5">
-              {installedTools.length === 0 ? (
-                <p className="px-5 py-1.5 text-[12px] text-faint">{t("globalWorkspace.noAgents")}</p>
-              ) : (
-                installedTools.map((tool) => {
-                  const skillCount = globalSkillsByAgent[tool.key] ?? 0;
-                  const isActive = location.pathname === `/global-workspace/${tool.key}`;
-                  return (
-                    <Link
-                      key={tool.key}
-                      to={`/global-workspace/${tool.key}`}
-                      className={cn(
-                        "flex items-center gap-2 px-2.5 py-[7px] rounded-[5px] text-[13px] transition-colors outline-none",
-                        isActive
-                          ? "bg-surface-active font-medium text-primary"
-                          : "text-tertiary hover:text-secondary hover:bg-surface-hover"
-                      )}
+            orderedTools.length === 0 ? (
+              <p className="px-5 py-1.5 text-[12px] text-faint">{t("globalWorkspace.noAgents")}</p>
+            ) : (
+              <DragDropContext onDragEnd={handleToolDragEnd}>
+                <Droppable droppableId="global-workspace-tools">
+                  {(droppableProvided) => (
+                    <div
+                      className="space-y-0.5"
+                      ref={droppableProvided.innerRef}
+                      {...droppableProvided.droppableProps}
                     >
-                      <span className={cn(
-                        "flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded border",
-                        isActive
-                          ? "border-accent/30 bg-accent/10 text-accent"
-                          : "border-border bg-surface text-muted"
-                      )}>
-                        <Globe className="h-3 w-3" />
-                      </span>
-                      <span className="flex-1 truncate">{tool.display_name}</span>
-                      {skillCount > 0 && (
-                        <span className={cn(
-                          "min-w-[18px] rounded-full px-1.5 text-center text-[12px] font-medium leading-[18px] tabular-nums",
-                          isActive ? "bg-accent-bg text-accent-light" : "bg-surface-hover text-muted"
-                        )}>
-                          {skillCount}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })
-              )}
-            </div>
+                      {orderedTools.map((tool, index) => {
+                        const skillCount = globalSkillsByAgent[tool.key] ?? 0;
+                        const isActive = location.pathname === `/global-workspace/${tool.key}`;
+                        return (
+                          <Draggable key={tool.key} draggableId={tool.key} index={index}>
+                            {(provided) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={cn(
+                                  "group relative flex items-center rounded-[5px] transition-colors",
+                                  isActive ? "bg-surface-active" : "hover:bg-surface-hover"
+                                )}
+                              >
+                                <button
+                                  onClick={() => navigate(`/global-workspace/${tool.key}`)}
+                                  className={cn(
+                                    "flex min-w-0 flex-1 items-center gap-2 px-2.5 py-[7px] text-left text-[13px] leading-5 outline-none",
+                                    isActive ? "font-medium text-primary" : "text-tertiary group-hover:text-secondary"
+                                  )}
+                                >
+                                  <span className={cn(
+                                    "flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded border",
+                                    isActive
+                                      ? "border-accent/30 bg-accent/10 text-accent"
+                                      : "border-border bg-surface text-muted group-hover:border-border group-hover:text-tertiary"
+                                  )}>
+                                    <Globe className="h-3 w-3" />
+                                  </span>
+                                  <span className="flex-1 truncate">{tool.display_name}</span>
+                                  <span className="ml-auto flex h-[18px] w-[32px] shrink-0 items-center justify-end group-hover:hidden">
+                                    {skillCount > 0 && (
+                                      <span className={cn(
+                                        "min-w-[18px] rounded-full px-1.5 text-center text-[12px] font-medium leading-[18px] tabular-nums",
+                                        isActive ? "bg-accent-bg text-accent-light" : "bg-surface-hover text-muted"
+                                      )}>
+                                        {skillCount}
+                                      </span>
+                                    )}
+                                  </span>
+                                </button>
+                                <div className={cn(
+                                  "absolute right-1 flex items-center rounded-[3px] invisible opacity-0 transition-opacity group-hover:visible group-hover:opacity-100",
+                                  isActive ? "bg-surface-active" : "bg-surface-hover"
+                                )}>
+                                  <div
+                                    {...provided.dragHandleProps}
+                                    className="rounded p-1 text-faint cursor-grab active:cursor-grabbing"
+                                  >
+                                    <GripVertical className="h-3 w-3" />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                      {droppableProvided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            )
           )}
         </div>
 
