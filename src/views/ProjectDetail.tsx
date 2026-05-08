@@ -1303,7 +1303,7 @@ export function ProjectDetail() {
 
       {/* Export from Center Dialog */}
       {showExportDialog && id && (
-        <ExportFromCenterDialog
+        <AddFromLibraryDialog
           exportTargets={exportTargets}
           managedSkills={managedSkills}
           selectedAgents={selectedExportAgents}
@@ -1468,7 +1468,7 @@ function ProjectSkillDetailPanel({
   );
 }
 
-function ExportFromCenterDialog({
+function AddFromLibraryDialog({
   exportTargets,
   managedSkills,
   selectedAgents,
@@ -1490,6 +1490,7 @@ function ExportFromCenterDialog({
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [tagFilters, setTagFilters] = useState<Set<string>>(new Set());
+  const [sourceFilters, setSourceFilters] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState<string | null>(null);
   const [batchExporting, setBatchExporting] = useState(false);
   const [dirNameMap, setDirNameMap] = useState<Record<string, string>>({});
@@ -1552,6 +1553,31 @@ function ExportFromCenterDialog({
     return Array.from(tags).sort((a, b) => a.localeCompare(b));
   }, [managedSkills]);
 
+  const sourceTypes = useMemo(() => {
+    const preferred = ["local", "import", "git", "skillssh"];
+    const present = new Set(managedSkills.map((skill) => skill.source_type).filter(Boolean));
+    return [
+      ...preferred.filter((source) => present.has(source)),
+      ...Array.from(present).filter((source) => !preferred.includes(source)).sort(),
+    ];
+  }, [managedSkills]);
+
+  const toggleSourceFilter = useCallback((source: string) => {
+    setSourceFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(source)) next.delete(source);
+      else next.add(source);
+      return next;
+    });
+  }, []);
+
+  const sourceLabel = useCallback((source: string) => {
+    if (["local", "import", "git", "skillssh"].includes(source)) {
+      return t(`mySkills.sourceFilter.${source}`);
+    }
+    return source;
+  }, [t]);
+
   const activeTargets = useMemo(
     () => exportTargets.filter((target) => target.installed && target.enabled),
     [exportTargets]
@@ -1574,9 +1600,10 @@ function ExportFromCenterDialog({
       skill.name.toLowerCase().includes(search.toLowerCase()) ||
       (skill.description || "").toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
+    if (sourceFilters.size > 0 && !sourceFilters.has(skill.source_type)) return false;
     if (tagFilters.size === 0) return true;
     return skill.tags.some((tag) => tagFilters.has(tag));
-  }), [managedSkills, search, tagFilters]);
+  }), [managedSkills, search, sourceFilters, tagFilters]);
 
   const isAlreadyExists = useCallback((skill: ManagedSkill) => {
     const exportDirName = dirNameMap[skill.id];
@@ -1631,10 +1658,10 @@ function ExportFromCenterDialog({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-xl border border-border-subtle bg-bg-secondary shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
+      <div className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border-subtle bg-bg-secondary shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-5 py-4">
           <h2 className="text-[14px] font-semibold text-primary">
             {t("project.addSkillsToProject")}
           </h2>
@@ -1646,7 +1673,7 @@ function ExportFromCenterDialog({
           </button>
         </div>
 
-        <div className="px-5 py-3 border-b border-border-subtle">
+        <div className="shrink-0 overflow-y-auto border-b border-border-subtle px-5 py-3 scrollbar-hide">
           <div className="mb-3 flex items-center gap-2">
             <label className="shrink-0 text-[12px] font-medium text-muted">
               {t("project.targetAgents")}
@@ -1767,26 +1794,18 @@ function ExportFromCenterDialog({
                 autoFocus
               />
             </div>
-            {selectedSelectable.length > 0 && isMultiSelect && (
-              <button
-                onClick={handleBatchExport}
-                disabled={batchExporting}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors"
-              >
-                {batchExporting
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : t("project.updateSelected", { count: selectedSelectable.length })}
-              </button>
-            )}
             <button
               onClick={() => isMultiSelect ? exitMultiSelect() : setIsMultiSelect(true)}
               className={cn(
-                "shrink-0 rounded-md p-2 transition-colors outline-none",
-                isMultiSelect ? "bg-surface-active text-secondary" : "text-muted hover:text-tertiary hover:bg-surface-hover"
+                "shrink-0 inline-flex h-10 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors outline-none",
+                isMultiSelect
+                  ? "border-accent-border bg-accent-bg text-accent-light"
+                  : "border-border-subtle bg-background text-muted hover:border-border hover:text-secondary"
               )}
               title={isMultiSelect ? t("project.cancelSelect") : t("project.selectMode")}
             >
               <SquareCheck className="h-4 w-4" />
+              <span>{isMultiSelect ? t("project.cancelBatchSelect") : t("project.batchSelectMode")}</span>
             </button>
           </div>
           {allTags.length > 0 && (
@@ -1831,20 +1850,45 @@ function ExportFromCenterDialog({
                   </button>
                 );
               })}
-              {isMultiSelect && selectableFiltered.length > 0 && (
-                <button
-                  onClick={handleSelectAll}
-                  className="ml-auto text-[12px] text-accent hover:underline"
-                >
-                  {isAllSelected ? t("project.deselectAll") : t("project.selectAll")}
-                </button>
-              )}
               </div>
+            </div>
+          )}
+          {sourceTypes.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-[12px] font-medium text-muted">{t("mySkills.sourceType")}</span>
+              <button
+                onClick={() => setSourceFilters(new Set())}
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[12px] transition-colors",
+                  sourceFilters.size === 0
+                    ? "border-accent-border bg-accent-bg text-accent-light"
+                    : "border-border-subtle text-muted hover:border-border hover:text-secondary"
+                )}
+              >
+                {t("mySkills.sourceFilter.all")}
+              </button>
+              {sourceTypes.map((source) => {
+                const active = sourceFilters.has(source);
+                return (
+                  <button
+                    key={source}
+                    onClick={() => toggleSourceFilter(source)}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[12px] transition-colors",
+                      active
+                        ? "border-accent-border bg-accent-bg text-accent-light"
+                        : "border-border-subtle text-muted hover:border-border hover:text-secondary"
+                    )}
+                  >
+                    {sourceLabel(source)}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
 
-        <div className="max-h-[400px] overflow-y-auto scrollbar-hide">
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hide">
           {filtered.length === 0 ? (
             <div className="py-12 text-center text-[13px] text-muted">
               {t("project.noSkillsToExport")}
@@ -1859,7 +1903,7 @@ function ExportFromCenterDialog({
                   <div
                     key={skill.id}
                     className={cn(
-                      "flex items-center gap-3 px-5 py-3 transition-colors",
+                      "flex items-center gap-3 px-5 py-2.5 transition-colors",
                       selectable ? "cursor-pointer hover:bg-surface-hover" : "hover:bg-surface-hover",
                       selectable && isSelected && "bg-accent/5"
                     )}
@@ -1871,8 +1915,13 @@ function ExportFromCenterDialog({
                         : <Square className="h-3.5 w-3.5 shrink-0 text-faint" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium text-primary truncate">
-                        {skill.name}
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="truncate text-[13px] font-medium text-primary">
+                          {skill.name}
+                        </div>
+                        <span className="shrink-0 rounded-full bg-surface-hover px-1.5 py-0.5 text-[11px] font-medium text-muted">
+                          {sourceLabel(skill.source_type)}
+                        </span>
                       </div>
                       {skill.description && (
                         <div className="text-[12px] text-muted truncate mt-0.5">
@@ -1903,6 +1952,42 @@ function ExportFromCenterDialog({
             </div>
           )}
         </div>
+        {isMultiSelect && (
+          <div className="shrink-0 border-t border-border-subtle bg-bg-secondary px-5 py-3">
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold text-primary">
+                  {t("project.selectedCount", { count: selectedSelectable.length })}
+                </div>
+                <button
+                  onClick={handleSelectAll}
+                  disabled={selectableFiltered.length === 0}
+                  className="mt-0.5 text-[12px] font-medium text-accent hover:underline disabled:cursor-not-allowed disabled:text-faint disabled:no-underline"
+                >
+                  {isAllSelected ? t("project.deselectAll") : t("project.selectAll")}
+                </button>
+              </div>
+              <button
+                onClick={exitMultiSelect}
+                className="rounded-md border border-border-subtle px-3 py-2 text-[13px] font-medium text-muted transition-colors hover:border-border hover:text-secondary"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleBatchExport}
+                disabled={selectedSelectable.length === 0 || batchExporting}
+                className="inline-flex min-w-[128px] items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-2 text-[13px] font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {batchExporting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <SquareCheck className="h-3.5 w-3.5" />
+                )}
+                {t("project.addSelectedSkills", { count: selectedSelectable.length })}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body

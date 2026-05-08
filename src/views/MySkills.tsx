@@ -69,10 +69,11 @@ import { CSS } from "@dnd-kit/utilities";
 interface SortableSkillItemProps {
   id: string;
   disabled: boolean;
+  className?: string;
   children: (dragHandle: React.ReactNode) => React.ReactNode;
 }
 
-function SortableSkillItem({ id, disabled, children }: SortableSkillItemProps) {
+function SortableSkillItem({ id, disabled, className, children }: SortableSkillItemProps) {
   const {
     attributes,
     listeners,
@@ -100,7 +101,7 @@ function SortableSkillItem({ id, disabled, children }: SortableSkillItemProps) {
   ) : null;
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} className="h-full">
+    <div ref={setNodeRef} style={style} {...attributes} className={cn("h-full", className)}>
       {children(handle)}
     </div>
   );
@@ -1538,7 +1539,12 @@ export function MySkills() {
 
             if (viewMode === "grid") {
               return (
-                <SortableSkillItem key={skill.id} id={skill.id} disabled={!canDrag}>
+                <SortableSkillItem
+                  key={skill.id}
+                  id={skill.id}
+                  disabled={!canDrag}
+                  className={tagEditSkillId === skill.id ? "relative z-30" : undefined}
+                >
                 {(dragHandle) => (
                 <div
                   className={cn(
@@ -1669,11 +1675,15 @@ export function MySkills() {
                             }}
                             placeholder={t("mySkills.tags.addTag")}
                             className="h-5 w-28 rounded-full border border-border-subtle bg-transparent px-1.5 text-[11px] text-secondary outline-none focus:border-accent"
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            autoComplete="off"
+                            spellCheck={false}
                             autoFocus
                           />
                           {getTagOptions(skill, tagInput).length > 0 && (
-                            <div className="absolute left-0 top-6 z-10 min-w-[112px] max-w-[180px] rounded-md border border-border-subtle bg-surface p-1 shadow-lg">
-                              {getTagOptions(skill, tagInput).slice(0, 6).map((tagOption) => (
+                            <div className="absolute left-0 top-6 z-50 max-h-56 min-w-[112px] max-w-[180px] overflow-y-auto rounded-md border border-border-subtle bg-surface p-1 shadow-lg">
+                              {getTagOptions(skill, tagInput).map((tagOption) => (
                                 <button
                                   key={tagOption}
                                   type="button"
