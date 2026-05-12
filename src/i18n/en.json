@@ -778,6 +778,26 @@
     "deleteSelected": "Remove {{count}}",
     "batchRemoveConfirm": "Remove {{count}} selected skills from {{agent}}? This only unlinks them from the global workspace; central library files are kept.",
     "batchRemoved": "{{count}} skills removed",
-    "batchRemoveFailed": "{{count}} skills failed to remove"
+    "batchRemoveFailed": "{{count}} skills failed to remove",
+    "localSkills": {
+      "title": "Local skills needing review ({{count}})",
+      "inSyncCount": "{{count}} in sync",
+      "upload": "Upload",
+      "uploaded": "Uploaded",
+      "pull": "Pull",
+      "uploadedToast": "Uploaded \"{{name}}\" to Skills Center. It was not synced back to {{agent}}.",
+      "pulledToast": "Updated \"{{name}}\" from Skills Center in {{agent}}.",
+      "uploadConfirmTitle": "Update center skill?",
+      "uploadConfirmMessage": "Upload \"{{name}}\" to the matching Skills Center entry? This replaces the center copy.",
+      "pullConfirmTitle": "Overwrite local skill?",
+      "pullConfirmMessage": "Pull the Skills Center version of \"{{name}}\" into {{agent}}? This overwrites the local agent copy.",
+      "status": {
+        "localOnly": "Local only",
+        "inSync": "In sync",
+        "localNewer": "Local changed",
+        "centerNewer": "Center changed",
+        "diverged": "Conflict"
+      }
+    }
   }
 }

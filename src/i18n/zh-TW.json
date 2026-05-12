@@ -708,6 +708,26 @@
     "deleteSelected": "移除 {{count}} 個",
     "batchRemoveConfirm": "從 {{agent}} 移除 {{count}} 個 Skills？此操作不會刪除技能庫中的資料。",
     "batchRemoved": "已移除 {{count}} 個 Skill",
-    "batchRemoveFailed": "{{count}} 個 Skill 移除失敗"
+    "batchRemoveFailed": "{{count}} 個 Skill 移除失敗",
+    "localSkills": {
+      "title": "待檢查的本機 Skills（{{count}}）",
+      "inSyncCount": "{{count}} 個已同步",
+      "upload": "上傳",
+      "uploaded": "已上傳",
+      "pull": "拉取",
+      "uploadedToast": "已將「{{name}}」上傳到 Skills 中心，未自動同步回 {{agent}}。",
+      "pulledToast": "已從 Skills 中心更新 {{agent}} 中的「{{name}}」。",
+      "uploadConfirmTitle": "更新中心 Skill？",
+      "uploadConfirmMessage": "將「{{name}}」上傳到匹配的 Skills 中心項目？這會替換中心副本。",
+      "pullConfirmTitle": "覆蓋本機 Skill？",
+      "pullConfirmMessage": "將 Skills 中心版本的「{{name}}」拉取到 {{agent}}？這會覆蓋該 Agent 的本機副本。",
+      "status": {
+        "localOnly": "僅本機",
+        "inSync": "已同步",
+        "localNewer": "本機有變更",
+        "centerNewer": "中心有變更",
+        "diverged": "衝突"
+      }
+    }
   }
 }

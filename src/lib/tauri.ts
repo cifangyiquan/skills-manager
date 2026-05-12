@@ -572,3 +572,17 @@ export const deleteProjectSkill = (projectId: string, skillRelativePath: string,
 
 export const slugifySkillNames = (names: string[]) =>
   invoke<string[]>("slugify_skill_names", { names });
+
+// ── Agent Local Workspace ──
+
+export const getGlobalLocalSkills = (agent: string) =>
+  invoke<ProjectSkill[]>("get_global_local_skills", { agent });
+
+export const getGlobalLocalSkillDocument = (agent: string, skillRelativePath: string) =>
+  invoke<ProjectSkillDocument>("get_global_local_skill_document", { agent, skillRelativePath });
+
+export const importGlobalLocalSkillToCenter = (agent: string, skillRelativePath: string) =>
+  invoke<void>("import_global_local_skill_to_center", { agent, skillRelativePath });
+
+export const updateGlobalLocalSkillFromCenter = (agent: string, skillRelativePath: string) =>
+  invoke<void>("update_global_local_skill_from_center", { agent, skillRelativePath });

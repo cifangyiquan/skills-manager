@@ -603,10 +603,10 @@ export function Settings() {
         await api.setToolOrder(newFullOrder);
         await refreshTools();
       } catch (e) {
-        toast.error(getErrorMessage(e));
+        toast.error(getErrorMessage(e, t("common.error")));
       }
     },
-    [tools, refreshTools]
+    [tools, refreshTools, t]
   );
   const displayedRepoPath = centralRepoPath
     ? compactHomePath(centralRepoPath)
