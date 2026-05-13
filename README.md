@@ -17,23 +17,23 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo.gif" width="800" alt="Skills Manager Demo" />
+  <img src="assets/demo/library.png" width="800" alt="Skills Manager Library" />
 </p>
 
-<p align="center"><strong>My Skills</strong></p>
-<p align="center"><img src="assets/CleanShot_20260419_003504@2x.png" width="800" alt="My Skills" /></p>
-
 <p align="center"><strong>Install Skills — Marketplace</strong></p>
-<p align="center"><img src="assets/CleanShot_20260316_231142@2x.png" width="800" alt="Install Skills Marketplace" /></p>
+<p align="center"><img src="assets/demo/install-skills.png" width="800" alt="Install Skills Marketplace" /></p>
 
-<p align="center"><strong>Projects</strong></p>
-<p align="center"><img src="assets/CleanShot_20260419_003526@2x.png" width="800" alt="Projects" /></p>
+<p align="center"><strong>Global Workspace</strong></p>
+<p align="center"><img src="assets/demo/global-workspace.png" width="800" alt="Global Workspace" /></p>
+
+<p align="center"><strong>Agent Workspace</strong></p>
+<p align="center"><img src="assets/demo/agent-workspace.png" width="800" alt="Agent Workspace" /></p>
+
+<p align="center"><strong>Project Workspace</strong></p>
+<p align="center"><img src="assets/demo/project-workspace.png" width="800" alt="Project Workspace" /></p>
 
 <p align="center"><strong>Settings</strong></p>
-<p align="center"><img src="assets/CleanShot_20260419_003825@2x.png" width="800" alt="Settings" /></p>
-
-<p align="center"><strong>Code Diff</strong></p>
-<p align="center"><img src="assets/CleanShot_20260419_003613@2x.png" width="800" alt="Code Diff" /></p>
+<p align="center"><img src="assets/demo/settings.png" width="800" alt="Settings" /></p>
 
 ## Features
 

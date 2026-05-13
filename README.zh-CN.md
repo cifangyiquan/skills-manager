@@ -13,12 +13,23 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo-zh.gif" width="800" alt="Skills Manager 演示" />
+  <img src="assets/demo/library.png" width="800" alt="Skills Manager 技能库" />
 </p>
 
-| 我的 Skills | 项目 Skills |
-|:-----------:|:----------:|
-| <img src="assets/CleanShot_20260419_003504@2x.png" width="400" alt="我的 Skills" /> | <img src="assets/CleanShot_20260419_003526@2x.png" width="400" alt="项目 Skills" /> |
+<p align="center"><strong>安装 Skills</strong></p>
+<p align="center"><img src="assets/demo/install-skills.png" width="800" alt="安装 Skills" /></p>
+
+<p align="center"><strong>全局工作区</strong></p>
+<p align="center"><img src="assets/demo/global-workspace.png" width="800" alt="全局工作区" /></p>
+
+<p align="center"><strong>Agent 工作区</strong></p>
+<p align="center"><img src="assets/demo/agent-workspace.png" width="800" alt="Agent 工作区" /></p>
+
+<p align="center"><strong>项目工作区</strong></p>
+<p align="center"><img src="assets/demo/project-workspace.png" width="800" alt="项目工作区" /></p>
+
+<p align="center"><strong>设置</strong></p>
+<p align="center"><img src="assets/demo/settings.png" width="800" alt="设置" /></p>
 
 ## 功能
 

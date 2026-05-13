@@ -35,6 +35,7 @@ const DEFAULT_PRIORITY_ORDER: &[&str] = &[
     "cursor",
     "opencode",
     "hermes",
+    "openclaw",
 ];
 
 pub fn get_tool_order(store: &SkillStore) -> Vec<String> {
