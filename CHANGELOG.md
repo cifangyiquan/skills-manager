@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.1] - 2026-05-15
+
+### Fixed
+- **macOS "app is damaged" error on first launch** — Release builds are now ad-hoc signed in CI, so downloading the `.dmg` no longer triggers the Gatekeeper "damaged" warning that forced users to run `xattr -cr` manually (#138).
+- **Black screen when opening a skill detail on older macOS** — The skill detail sheet now uses explicit stacking, fixing a regression where the panel rendered as a black overlay on Monterey/older WKWebView versions (#69, #144).
+- **Importing skills from nested category folders** — `git` skill import now walks nested category directories instead of only looking at top-level folders, so repos that organize skills under subcategories import correctly (#121).
 ## [1.19.0] - 2026-05-13
 
 ### Added

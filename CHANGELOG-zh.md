@@ -5,6 +5,12 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.19.1] - 2026-05-15
+
+### 修复
+- **macOS 首次打开提示「应用已损坏」** — CI 构建的 release 包现在会做 ad-hoc 签名，下载 `.dmg` 后不再触发 Gatekeeper 的「已损坏」警告，无需手动执行 `xattr -cr`（#138）。
+- **老版本 macOS 打开技能详情时黑屏** — 技能详情侧边面板改用显式 stacking，修复 Monterey / 旧版 WKWebView 上面板渲染为黑色遮罩的回归问题（#69, #144）。
+- **从嵌套分类目录导入 git 技能** — git 技能导入现在会递归扫描嵌套分类目录，而不是只看顶层文件夹，便于按子分类组织的技能仓库正确导入（#121）。 
 ## [1.19.0] - 2026-05-13
 
 ### 新增
