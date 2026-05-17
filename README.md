@@ -146,7 +146,7 @@ npm run cli -- skills show db
 npm run cli -- skills install ./my-skill                       # local path
 npm run cli -- skills install https://github.com/foo/bar.git   # git URL
 npm run cli -- skills install vercel-labs/agent-skills@react-best-practices  # skills.sh
-npm run cli -- skills install foo/bar --sync                   # add to active scenario + sync to agents
+npm run cli -- skills install foo/bar --sync                   # add to active preset + sync to agents
 
 # Update / check from upstream (git skills re-clone, local skills re-import source)
 npm run cli -- skills update --all
@@ -163,7 +163,7 @@ npm run cli -- skills remove <ref> --yes
 npm run cli -- skills enable <ref>
 npm run cli -- skills disable <ref>
 
-# Sync the active scenario out to enabled agents
+# Sync the active preset out to enabled agents
 npm run cli -- skills sync --dry-run
 npm run cli -- skills sync --tool claude_code
 
@@ -175,12 +175,12 @@ npm run cli -- skills adopt ~/.claude/skills
 npm run cli -- skills tag add <ref> web frontend
 npm run cli -- skills tag list
 
-# Scenarios
-npm run cli -- scenarios list
-npm run cli -- scenarios preview Default
-npm run cli -- scenarios apply Default
-npm run cli -- scenarios add-skill <scenario> <skill>
-npm run cli -- scenarios remove-skill <scenario> <skill>
+# Presets
+npm run cli -- presets list
+npm run cli -- presets preview Default
+npm run cli -- presets apply Default
+npm run cli -- presets add-skill <preset> <skill>
+npm run cli -- presets remove-skill <preset> <skill>
 
 # Export one skill to an arbitrary directory (one-shot copy, not managed)
 npm run cli -- skills export db --dest ~/.claude/skills/db
@@ -195,11 +195,11 @@ Available command groups:
 - `repo` — inspect or change the configured base directory
 - `tools` — list detected tool targets and paths
 - `skills` — manage skills in the central library (`list / show / install / update / check / remove / enable / disable / sync / search / adopt / tag / export`)
-- `scenarios` — list scenarios, preview / apply, add or remove skills from a scenario
+- `presets` — list presets, preview / apply, add or remove skills from a preset
 - `git` — operate on the git-backed `skills/` repository (`clone`, `pull`, `push`, `commit`, `versions`, `restore`)
 
 Extra flags:
-- `--skills-root <path>` — operate on a cloned/exported skills repo directly instead of the local app default. The manager's state (DB, scenarios, cache, logs) lives in `~/.skills-manager/external/<name>-<hash>/`, namespaced by the canonical path of the skills root, so the external checkout itself stays clean.
+- `--skills-root <path>` — operate on a cloned/exported skills repo directly instead of the local app default. The manager's state (DB, presets, cache, logs) lives in `~/.skills-manager/external/<name>-<hash>/`, namespaced by the canonical path of the skills root, so the external checkout itself stays clean.
 - `--json` — machine-readable output for scripts/agents
 
 ```bash
@@ -220,7 +220,7 @@ This drops the binary at `~/.cargo/bin/skills-manager-cli`. Re-run after pulling
 
 #### Concurrent use with the desktop app
 
-The CLI and desktop app share the same SQLite database. SQLite serializes writes safely, but the running app does not auto-refresh its in-memory caches when the CLI mutates state — restart or trigger a manual refresh in the app after `scenarios apply`, `git pull`, or other CLI write operations.
+The CLI and desktop app share the same SQLite database. SQLite serializes writes safely, but the running app does not auto-refresh its in-memory caches when the CLI mutates state — restart or trigger a manual refresh in the app after `presets apply`, `git pull`, or other CLI write operations.
 
 ### Build
 

@@ -29,7 +29,8 @@ enum Commands {
     Repo(RepoArgs),
     Tools(ToolsArgs),
     Skills(SkillsArgs),
-    Scenarios(ScenarioArgs),
+    #[command(alias = "scenarios")]
+    Presets(PresetArgs),
     Git(GitArgs),
 }
 
@@ -85,12 +86,12 @@ enum SkillsCommand {
         skillssh: bool,
         #[arg(long)]
         name: Option<String>,
-        /// Add to current active scenario and sync agents
-        #[arg(long, conflicts_with = "sync_scenario")]
+        /// Add to current active preset and sync agents
+        #[arg(long, conflicts_with = "sync_preset")]
         sync: bool,
-        /// Add to given scenario (by id or name) and sync agents
-        #[arg(long, value_name = "REF")]
-        sync_scenario: Option<String>,
+        /// Add to given preset (by id or name) and sync agents
+        #[arg(long, alias = "sync-scenario", value_name = "REF")]
+        sync_preset: Option<String>,
     },
     Update {
         /// Skill ref (id / name / dir basename / central path). Omit for --all.
@@ -119,9 +120,9 @@ enum SkillsCommand {
         references: Vec<String>,
     },
     Sync {
-        /// Scenario id or name (default = current active scenario)
-        #[arg(long)]
-        scenario: Option<String>,
+        /// Preset id or name (default = current active preset)
+        #[arg(long, alias = "scenario")]
+        preset: Option<String>,
         /// Tool key (default = all enabled tools)
         #[arg(long)]
         tool: Option<String>,
@@ -172,13 +173,13 @@ enum TagCommand {
 }
 
 #[derive(Args, Debug)]
-struct ScenarioArgs {
+struct PresetArgs {
     #[command(subcommand)]
-    command: ScenarioCommand,
+    command: PresetCommand,
 }
 
 #[derive(Subcommand, Debug)]
-enum ScenarioCommand {
+enum PresetCommand {
     List,
     Current,
     Preview {
@@ -188,11 +189,11 @@ enum ScenarioCommand {
         reference: String,
     },
     AddSkill {
-        scenario: String,
+        preset: String,
         skills: Vec<String>,
     },
     RemoveSkill {
-        scenario: String,
+        preset: String,
         skills: Vec<String>,
     },
 }
@@ -235,8 +236,8 @@ struct RepoStatus {
     db_path: String,
     metadata_dir: String,
     skill_count: usize,
-    scenario_count: usize,
-    active_scenario_id: Option<String>,
+    preset_count: usize,
+    active_preset_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -249,7 +250,7 @@ struct SkillSummary {
     tags: Vec<String>,
     source_type: String,
     source_ref: Option<String>,
-    scenarios: Vec<String>,
+    presets: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -262,7 +263,7 @@ struct SkillDetail {
 }
 
 #[derive(Debug, Serialize)]
-struct ScenarioInfo {
+struct PresetInfo {
     id: String,
     name: String,
     description: Option<String>,
@@ -280,7 +281,7 @@ struct InstallReport {
     central_path: String,
     source_type: String,
     synced: bool,
-    scenario_id: Option<String>,
+    preset_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -320,8 +321,8 @@ struct EnableReport {
 #[derive(Debug, Serialize)]
 struct SyncReport {
     ok: bool,
-    scenario_id: String,
-    scenario_name: String,
+    preset_id: String,
+    preset_name: String,
     tool: Option<String>,
     dry_run: bool,
     targets: Vec<scenario_service::SyncPreviewTarget>,
@@ -361,9 +362,9 @@ struct TagReport {
 }
 
 #[derive(Debug, Serialize)]
-struct ScenarioMembershipReport {
-    scenario_id: String,
-    scenario_name: String,
+struct PresetMembershipReport {
+    preset_id: String,
+    preset_name: String,
     added: Vec<String>,
     removed: Vec<String>,
     missing: Vec<String>,
@@ -426,7 +427,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::Repo(args) => run_repo(args, &store, cli.json),
         Commands::Tools(args) => run_tools(args, &store, cli.json),
         Commands::Skills(args) => run_skills(args, &store, cli.json),
-        Commands::Scenarios(args) => run_scenarios(args, &store, cli.json),
+        Commands::Presets(args) => run_presets(args, &store, cli.json),
         Commands::Git(args) => run_git(args, cli.skills_root.is_some(), cli.json),
     }
 }
@@ -457,8 +458,8 @@ fn repo_status(store: &SkillStore) -> RepoStatus {
         db_path: central_repo::db_path().to_string_lossy().to_string(),
         metadata_dir: sync_metadata::metadata_dir().to_string_lossy().to_string(),
         skill_count: store.get_all_skills().unwrap_or_default().len(),
-        scenario_count: store.get_all_scenarios().unwrap_or_default().len(),
-        active_scenario_id: store.get_active_scenario_id().unwrap_or(None),
+        preset_count: store.get_all_scenarios().unwrap_or_default().len(),
+        active_preset_id: store.get_active_scenario_id().unwrap_or(None),
     }
 }
 
@@ -491,10 +492,10 @@ fn run_skills(args: SkillsArgs, store: &SkillStore, json: bool) -> anyhow::Resul
             skillssh,
             name,
             sync,
-            sync_scenario,
+            sync_preset,
         } => {
             let kind = classify_ref(&reference, local, git, skillssh)?;
-            let sync_target = if let Some(ref s) = sync_scenario {
+            let sync_target = if let Some(ref s) = sync_preset {
                 SyncTarget::Specific(s.clone())
             } else if sync {
                 SyncTarget::Active
@@ -533,11 +534,11 @@ fn run_skills(args: SkillsArgs, store: &SkillStore, json: bool) -> anyhow::Resul
             print_json(&reports, json);
         }
         SkillsCommand::Sync {
-            scenario,
+            preset,
             tool,
             dry_run,
         } => {
-            let report = run_sync(store, scenario.as_deref(), tool.as_deref(), dry_run)?;
+            let report = run_sync(store, preset.as_deref(), tool.as_deref(), dry_run)?;
             print_json(&report, json);
         }
         SkillsCommand::Search { query, limit } => {
@@ -572,7 +573,7 @@ fn list_skills(store: &SkillStore) -> anyhow::Result<Vec<SkillSummary>> {
 
     let mut items = Vec::new();
     for skill in store.get_all_skills()? {
-        let scenario_names = store
+        let preset_names = store
             .get_scenarios_for_skill(&skill.id)?
             .into_iter()
             .filter_map(|id| scenario_lookup.get(&id).cloned())
@@ -586,7 +587,7 @@ fn list_skills(store: &SkillStore) -> anyhow::Result<Vec<SkillSummary>> {
             tags: tags_map.get(&skill.id).cloned().unwrap_or_default(),
             source_type: skill.source_type.clone(),
             source_ref: skill.source_ref.clone(),
-            scenarios: scenario_names,
+            presets: preset_names,
         });
     }
     Ok(items)
@@ -742,14 +743,14 @@ fn run_install(
     kind: InstallKind,
     sync: SyncTarget,
 ) -> anyhow::Result<InstallReport> {
-    let scenario_id = resolve_sync_target(store, &sync)?;
-    let synced = scenario_id.is_some();
+    let preset_id = resolve_sync_target(store, &sync)?;
+    let synced = preset_id.is_some();
 
     let (skill_id, install_name, central_path, source_type) = match kind {
-        InstallKind::Local => install_local_action(store, reference, name, scenario_id.as_deref())?,
-        InstallKind::Git => install_git_action(store, reference, name, scenario_id.as_deref())?,
+        InstallKind::Local => install_local_action(store, reference, name, preset_id.as_deref())?,
+        InstallKind::Git => install_git_action(store, reference, name, preset_id.as_deref())?,
         InstallKind::Skillssh => {
-            install_skillssh_action(store, reference, scenario_id.as_deref())?
+            install_skillssh_action(store, reference, preset_id.as_deref())?
         }
     };
 
@@ -760,7 +761,7 @@ fn run_install(
         central_path,
         source_type,
         synced,
-        scenario_id,
+        preset_id,
     })
 }
 
@@ -1117,26 +1118,26 @@ fn run_set_enabled(
 
 fn run_sync(
     store: &SkillStore,
-    scenario_ref: Option<&str>,
+    preset_ref: Option<&str>,
     tool_key: Option<&str>,
     dry_run: bool,
 ) -> anyhow::Result<SyncReport> {
-    let scenario = match scenario_ref {
+    let preset = match preset_ref {
         Some(s) => resolve_scenario(store, s)?,
         None => {
             let active = store
                 .get_active_scenario_id()?
-                .ok_or_else(|| anyhow!("no active scenario; pass --scenario"))?;
+                .ok_or_else(|| anyhow!("no active preset; pass --preset"))?;
             store
                 .get_all_scenarios()?
                 .into_iter()
                 .find(|s| s.id == active)
-                .ok_or_else(|| anyhow!("active scenario not found"))?
+                .ok_or_else(|| anyhow!("active preset not found"))?
         }
     };
 
     let preview =
-        scenario_service::preview_scenario_sync(store, &scenario.id).map_err(map_app_err)?;
+        scenario_service::preview_scenario_sync(store, &preset.id).map_err(map_app_err)?;
 
     let filtered: Vec<_> = if let Some(t) = tool_key {
         preview.into_iter().filter(|p| p.tool == t).collect()
@@ -1147,18 +1148,18 @@ fn run_sync(
     if dry_run {
         return Ok(SyncReport {
             ok: true,
-            scenario_id: scenario.id,
-            scenario_name: scenario.name,
+            preset_id: preset.id,
+            preset_name: preset.name,
             tool: tool_key.map(|s| s.to_string()),
             dry_run: true,
             targets: filtered,
         });
     }
 
-    // Make scenario active if it isn't, then sync
+    // Make preset active if it isn't, then sync.
     let active = store.get_active_scenario_id()?;
-    if active.as_deref() != Some(scenario.id.as_str()) {
-        store.set_active_scenario(&scenario.id)?;
+    if active.as_deref() != Some(preset.id.as_str()) {
+        store.set_active_scenario(&preset.id)?;
     }
 
     if let Some(t) = tool_key {
@@ -1166,18 +1167,18 @@ fn run_sync(
         // fan out to every enabled adapter (which is what
         // sync_active_scenario_to_tool ends up doing via
         // sync_skill_to_active_scenario).
-        let all_targets = scenario_service::collect_scenario_sync_targets(store, &scenario.id)
+        let all_targets = scenario_service::collect_scenario_sync_targets(store, &preset.id)
             .map_err(map_app_err)?;
         let desired: Vec<_> = all_targets.into_iter().filter(|tg| tg.tool == t).collect();
         scenario_service::sync_desired_targets(store, &desired).map_err(map_app_err)?;
     } else {
-        scenario_service::apply_scenario_to_default(store, &scenario.id).map_err(map_app_err)?;
+        scenario_service::apply_scenario_to_default(store, &preset.id).map_err(map_app_err)?;
     }
 
     Ok(SyncReport {
         ok: true,
-        scenario_id: scenario.id,
-        scenario_name: scenario.name,
+        preset_id: preset.id,
+        preset_name: preset.name,
         tool: tool_key.map(|s| s.to_string()),
         dry_run: false,
         targets: filtered,
@@ -1384,7 +1385,7 @@ fn run_adopt(
             central_path,
             source_type,
             synced: false,
-            scenario_id: None,
+            preset_id: None,
         });
     }
 
@@ -1503,26 +1504,26 @@ fn run_tag(args: TagArgs, store: &SkillStore, json: bool) -> anyhow::Result<()> 
     Ok(())
 }
 
-// ── scenarios ─────────────────────────────────────────────────────────────
+// ── presets ───────────────────────────────────────────────────────────────
 
-fn run_scenarios(args: ScenarioArgs, store: &SkillStore, json: bool) -> anyhow::Result<()> {
+fn run_presets(args: PresetArgs, store: &SkillStore, json: bool) -> anyhow::Result<()> {
     match args.command {
-        ScenarioCommand::List => print_json(&list_scenarios(store)?, json),
-        ScenarioCommand::Current => print_json(&current_scenario(store)?, json),
-        ScenarioCommand::Preview { reference } => {
-            let scenario = resolve_scenario(store, &reference)?;
-            let preview = scenario_service::preview_scenario_sync(store, &scenario.id)
+        PresetCommand::List => print_json(&list_presets(store)?, json),
+        PresetCommand::Current => print_json(&current_preset(store)?, json),
+        PresetCommand::Preview { reference } => {
+            let preset = resolve_scenario(store, &reference)?;
+            let preview = scenario_service::preview_scenario_sync(store, &preset.id)
                 .map_err(map_app_err)?;
             print_json(&preview, json);
         }
-        ScenarioCommand::Apply { reference } => {
-            let scenario = resolve_scenario(store, &reference)?;
-            scenario_service::apply_scenario_to_default(store, &scenario.id)
+        PresetCommand::Apply { reference } => {
+            let preset = resolve_scenario(store, &reference)?;
+            scenario_service::apply_scenario_to_default(store, &preset.id)
                 .map_err(map_app_err)?;
-            print_json(&current_scenario(store)?, json);
+            print_json(&current_preset(store)?, json);
         }
-        ScenarioCommand::AddSkill { scenario, skills } => {
-            let s = resolve_scenario(store, &scenario)?;
+        PresetCommand::AddSkill { preset, skills } => {
+            let s = resolve_scenario(store, &preset)?;
             let mut added = Vec::new();
             let mut missing = Vec::new();
             for r in skills {
@@ -1536,9 +1537,9 @@ fn run_scenarios(args: ScenarioArgs, store: &SkillStore, json: bool) -> anyhow::
             }
             sync_metadata::write_all_from_db(store)?;
             print_json(
-                &ScenarioMembershipReport {
-                    scenario_id: s.id,
-                    scenario_name: s.name,
+                &PresetMembershipReport {
+                    preset_id: s.id,
+                    preset_name: s.name,
                     added,
                     removed: Vec::new(),
                     missing,
@@ -1546,8 +1547,8 @@ fn run_scenarios(args: ScenarioArgs, store: &SkillStore, json: bool) -> anyhow::
                 json,
             );
         }
-        ScenarioCommand::RemoveSkill { scenario, skills } => {
-            let s = resolve_scenario(store, &scenario)?;
+        PresetCommand::RemoveSkill { preset, skills } => {
+            let s = resolve_scenario(store, &preset)?;
             let mut removed = Vec::new();
             let mut missing = Vec::new();
             for r in skills {
@@ -1561,9 +1562,9 @@ fn run_scenarios(args: ScenarioArgs, store: &SkillStore, json: bool) -> anyhow::
             }
             sync_metadata::write_all_from_db(store)?;
             print_json(
-                &ScenarioMembershipReport {
-                    scenario_id: s.id,
-                    scenario_name: s.name,
+                &PresetMembershipReport {
+                    preset_id: s.id,
+                    preset_name: s.name,
                     added: Vec::new(),
                     removed,
                     missing,
@@ -1575,12 +1576,12 @@ fn run_scenarios(args: ScenarioArgs, store: &SkillStore, json: bool) -> anyhow::
     Ok(())
 }
 
-fn list_scenarios(store: &SkillStore) -> anyhow::Result<Vec<ScenarioInfo>> {
+fn list_presets(store: &SkillStore) -> anyhow::Result<Vec<PresetInfo>> {
     let active = store.get_active_scenario_id()?;
     let scenarios = store.get_all_scenarios()?;
     Ok(scenarios
         .into_iter()
-        .map(|scenario| ScenarioInfo {
+        .map(|scenario| PresetInfo {
             skill_count: store
                 .get_skill_ids_for_scenario(&scenario.id)
                 .unwrap_or_default()
@@ -1595,8 +1596,8 @@ fn list_scenarios(store: &SkillStore) -> anyhow::Result<Vec<ScenarioInfo>> {
         .collect())
 }
 
-fn current_scenario(store: &SkillStore) -> anyhow::Result<Option<ScenarioInfo>> {
-    let scenarios = list_scenarios(store)?;
+fn current_preset(store: &SkillStore) -> anyhow::Result<Option<PresetInfo>> {
+    let scenarios = list_presets(store)?;
     Ok(scenarios.into_iter().find(|s| s.active))
 }
 
@@ -1608,11 +1609,11 @@ fn resolve_scenario(
     if reference == "current" {
         let active = store
             .get_active_scenario_id()?
-            .ok_or_else(|| anyhow!("no active scenario"))?;
+            .ok_or_else(|| anyhow!("no active preset"))?;
         return scenarios
             .into_iter()
             .find(|scenario| scenario.id == active)
-            .ok_or_else(|| anyhow!("active scenario not found"));
+            .ok_or_else(|| anyhow!("active preset not found"));
     }
     let matches: Vec<_> = scenarios
         .into_iter()
@@ -1620,8 +1621,8 @@ fn resolve_scenario(
         .collect();
     match matches.len() {
         1 => Ok(matches.into_iter().next().unwrap()),
-        0 => Err(anyhow!("scenario not found: {reference}")),
-        _ => Err(anyhow!("scenario reference is ambiguous: {reference}")),
+        0 => Err(anyhow!("preset not found: {reference}")),
+        _ => Err(anyhow!("preset reference is ambiguous: {reference}")),
     }
 }
 

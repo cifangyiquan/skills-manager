@@ -14,9 +14,11 @@ skills-manager-cli --json skills list
 
 ## Mental model
 
-There's **one central library** at `~/.skills-manager/skills/` that all agents share. Each skill in the library has metadata in a SQLite DB (source URL, scenario membership, tags, enabled flag). A **scenario** is a named group of skills. Active scenario gets **synced** out to every enabled agent's skill directory (`~/.claude/skills/`, `~/.cursor/skills/`, etc.) by symlink or copy.
+There's **one central library** at `~/.skills-manager/skills/` that all agents share. Each skill in the library has metadata in a SQLite DB (source URL, preset membership, tags, enabled flag). A **preset** is a named group of skills. The active preset gets **synced** out to every enabled agent's skill directory (`~/.claude/skills/`, `~/.cursor/skills/`, etc.) by symlink or copy.
 
-So the lifecycle is: **install → (in library) → add to scenario → sync → (visible to agent)**. `install --sync` is the shortcut that does all three.
+So the lifecycle is: **install → (in library) → add to preset → sync → (visible to agent)**. `install --sync` is the shortcut that does all three.
+
+Internally, presets are still stored as scenarios for backward-compatible Git Backup. The CLI and UI call them presets.
 
 ## Install
 
@@ -37,9 +39,9 @@ skills-manager-cli skills install ./looks-like/owner-repo --local
 ```
 
 **Default is library-only** — the skill enters the DB but doesn't appear in any agent yet. To make it visible:
-- `--sync` → add to the current active scenario + sync to every enabled agent (most common, do this unless the user signals otherwise)
-- `--sync-scenario <name>` → add to a specific scenario + sync
-- Or later: `scenarios add-skill <scenario> <skill>` followed by `skills sync`
+- `--sync` → add to the current active preset + sync to every enabled agent (most common, do this unless the user signals otherwise)
+- `--sync-preset <name>` → add to a specific preset + sync
+- Or later: `presets add-skill <preset> <skill>` followed by `skills sync`
 
 **Ref resolution** is deterministic, no path-existence guessing:
 1. Starts with `./`, `../`, `/`, or `~/` → local path
@@ -47,7 +49,7 @@ skills-manager-cli skills install ./looks-like/owner-repo --local
 3. Matches `owner/repo`, `owner/repo/skill`, or `owner/repo@skill` → skillssh
 4. Otherwise → error; pass `--local` / `--git` / `--skillssh` to disambiguate
 
-**Always verify after install** with `skills list` or `skills show <name>` so you can confirm the skill landed and report the scenario / sync state back to the user.
+**Always verify after install** with `skills list` or `skills show <name>` so you can confirm the skill landed and report the preset / sync state back to the user.
 
 ## Search
 
@@ -91,19 +93,19 @@ skills-manager-cli skills disable <skill>   # skipped by future syncs
 skills-manager-cli skills enable <skill>
 ```
 
-Disable is a "soft remove" — it stops the skill from being written into agent directories on future syncs, but **does not** purge already-synced copies. If the user wants the skill gone from agents *now*, follow up with `skills remove` or re-sync (the disabled skill will be cleaned up on the next sync of its scenario).
+Disable is a "soft remove" — it stops the skill from being written into agent directories on future syncs, but **does not** purge already-synced copies. If the user wants the skill gone from agents *now*, follow up with `skills remove` or re-sync (the disabled skill will be cleaned up on the next sync of its preset).
 
 ## Sync
 
 ```bash
-# Sync current active scenario to all enabled agents
+# Sync current active preset to all enabled agents
 skills-manager-cli skills sync
 
 # Preview the target list — safe, no writes
 skills-manager-cli skills sync --dry-run
 
-# Switch active scenario, then sync
-skills-manager-cli skills sync --scenario "Web Dev"
+# Switch active preset, then sync
+skills-manager-cli skills sync --preset "Web Dev"
 
 # Only sync to a single agent (useful when one agent's directory got out of sync)
 skills-manager-cli skills sync --tool claude_code
@@ -145,26 +147,26 @@ skills-manager-cli skills tag list <skill>   # tags on one skill
 skills-manager-cli skills tag list           # all distinct tags
 ```
 
-## Scenarios
+## Presets
 
 ```bash
-skills-manager-cli scenarios list
-skills-manager-cli scenarios current
+skills-manager-cli presets list
+skills-manager-cli presets current
 
-skills-manager-cli scenarios add-skill <scenario> <skill>...
-skills-manager-cli scenarios remove-skill <scenario> <skill>...
+skills-manager-cli presets add-skill <preset> <skill>...
+skills-manager-cli presets remove-skill <preset> <skill>...
 
-skills-manager-cli scenarios apply <scenario>   # makes it active + syncs
+skills-manager-cli presets apply <preset>   # makes it active + syncs
 ```
 
-Use `scenarios add-skill` when you want to put an already-installed skill into a *different* scenario without re-installing it, or to share a skill across multiple scenarios.
+Use `presets add-skill` when you want to put an already-installed skill into a *different* preset without re-installing it, or to share a skill across multiple presets.
 
 ## Health check
 
 When sync misbehaves or a command errors in a confusing way:
 
 ```bash
-skills-manager-cli --json repo status   # base dir, skill / scenario counts, active scenario
+skills-manager-cli --json repo status   # base dir, skill / preset counts, active preset
 skills-manager-cli --json tools list    # detected agents and their target paths
 ```
 
@@ -177,7 +179,7 @@ These two are read-only and great for diagnosing "why isn't this skill showing u
 1. `skills search "X" --limit 5` — show the top 1–3 hits with install counts and source.
 2. If a clear winner: `skills install <install_ref> --sync`.
 3. If ambiguous: ask the user to pick.
-4. `skills list` (or `skills show <name>`) to confirm it landed in the active scenario and synced.
+4. `skills list` (or `skills show <name>`) to confirm it landed in the active preset and synced.
 
 ### "What skills do I have?"
 
@@ -185,7 +187,7 @@ These two are read-only and great for diagnosing "why isn't this skill showing u
 skills-manager-cli --json skills list
 ```
 
-The `enabled`, `scenarios`, and `source_type` fields are usually the most informative to summarize back.
+The `enabled`, `presets`, and `source_type` fields are usually the most informative to summarize back.
 
 ### "Pull in the skills already installed in my agent directories"
 
@@ -204,7 +206,7 @@ Report which skills actually refreshed (`refreshed: true` in the JSON) vs which 
 
 ## Pitfalls
 
-- **No active scenario** → `skills sync` (without `--scenario`) fails. Show the user `scenarios list` and pick one with them, or use `sync --scenario <name>`.
-- **Install succeeded but skill doesn't appear in the agent** → install defaults to library-only. Re-run with `--sync`, or add it to the active scenario and sync.
+- **No active preset** → `skills sync` (without `--preset`) fails. Show the user `presets list` and pick one with them, or use `sync --preset <name>`.
+- **Install succeeded but skill doesn't appear in the agent** → install defaults to library-only. Re-run with `--sync`, or add it to the active preset and sync.
 - **Adopted skills can't be `update`d from git** → `npx skills add` and manual `git clone` don't leave source metadata, so adopt has to treat them as `local`. Fix per-skill with `adopt ... --git-url ... --git-subpath ...`, or just `skills remove` + `skills install <git-ref>` to start clean with a real source.
 - **`--dry-run` only exists on `remove`, `sync`, `adopt`.** For `install` / `update` / `check`, the preview is a different command (`search` before install, `check` before update).

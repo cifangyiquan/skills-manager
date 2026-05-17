@@ -112,16 +112,16 @@ pub async fn unsync_skill_from_tool(
 #[tauri::command]
 pub async fn get_skill_tool_toggles(
     skill_id: String,
-    scenario_id: String,
+    preset_id: String,
     store: State<'_, Arc<SkillStore>>,
 ) -> Result<Vec<SkillToolToggleDto>, AppError> {
     let store = store.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let skill_ids = store
-            .get_skill_ids_for_scenario(&scenario_id)
+            .get_skill_ids_for_scenario(&preset_id)
             .map_err(AppError::db)?;
         if !skill_ids.contains(&skill_id) {
-            return Err(AppError::not_found("Skill is not enabled in this scenario"));
+            return Err(AppError::not_found("Skill is not enabled in this preset"));
         }
 
         let disabled = disabled_tools(&store);
@@ -132,11 +132,11 @@ pub async fn get_skill_tool_toggles(
             .map(|adapter| adapter.key.clone())
             .collect();
         store
-            .ensure_scenario_skill_tool_defaults(&scenario_id, &skill_id, &default_enabled_keys)
+            .ensure_scenario_skill_tool_defaults(&preset_id, &skill_id, &default_enabled_keys)
             .map_err(AppError::db)?;
 
         let toggles = store
-            .get_scenario_skill_tool_toggles(&scenario_id, &skill_id)
+            .get_scenario_skill_tool_toggles(&preset_id, &skill_id)
             .map_err(AppError::db)?;
         let enabled_map: std::collections::HashMap<String, bool> = toggles
             .into_iter()
@@ -169,7 +169,7 @@ pub async fn get_skill_tool_toggles(
 #[tauri::command]
 pub async fn set_skill_tool_toggle(
     skill_id: String,
-    scenario_id: String,
+    preset_id: String,
     tool: String,
     enabled: bool,
     store: State<'_, Arc<SkillStore>>,
@@ -177,10 +177,10 @@ pub async fn set_skill_tool_toggle(
     let store = store.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let skill_ids = store
-            .get_skill_ids_for_scenario(&scenario_id)
+            .get_skill_ids_for_scenario(&preset_id)
             .map_err(AppError::db)?;
         if !skill_ids.contains(&skill_id) {
-            return Err(AppError::not_found("Skill is not enabled in this scenario"));
+            return Err(AppError::not_found("Skill is not enabled in this preset"));
         }
 
         let adapter = tool_adapters::find_adapter_with_store(&store, &tool)
@@ -204,7 +204,7 @@ pub async fn set_skill_tool_toggle(
         }
 
         sync_metadata::with_repo_lock("set skill tool toggle", || {
-            store.set_scenario_skill_tool_enabled(&scenario_id, &skill_id, &tool, enabled)?;
+            store.set_scenario_skill_tool_enabled(&preset_id, &skill_id, &tool, enabled)?;
             sync_metadata::write_all_from_db_unlocked(&store)
         })
         .map_err(AppError::db)?;
@@ -213,7 +213,7 @@ pub async fn set_skill_tool_toggle(
             .get_active_scenario_id()
             .map_err(AppError::db)?
             .as_deref()
-            == Some(scenario_id.as_str());
+            == Some(preset_id.as_str());
         if is_active {
             if enabled {
                 sync_skill_to_tool_internal(&store, &skill_id, &tool)?;

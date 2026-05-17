@@ -44,7 +44,7 @@ const MARKET_SEARCH_CACHE_MAX_ENTRIES = 150;
 
 export function InstallSkills() {
   const { t } = useTranslation();
-  const { refreshScenarios, refreshManagedSkills, managedSkills, openSkillDetailById } = useApp();
+  const { refreshPresets, refreshManagedSkills, managedSkills, openSkillDetailById } = useApp();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"market" | "local" | "git">("market");
@@ -307,7 +307,7 @@ export function InstallSkills() {
     // Install succeeded — post-install refresh is best-effort and must not
     // surface as an install failure.
     const results = await Promise.allSettled([
-      refreshScenarios(),
+      refreshPresets(),
       refreshManagedSkills(),
       runScanSilent(),
     ]);
@@ -400,7 +400,7 @@ export function InstallSkills() {
         );
       }
 
-      await Promise.all([refreshScenarios(), refreshManagedSkills()]);
+      await Promise.all([refreshPresets(), refreshManagedSkills()]);
       runScan();
     } catch (error: unknown) {
       const message = getErrorMessage(error, t("common.error"));
@@ -436,7 +436,7 @@ export function InstallSkills() {
         }
       );
       await api.installFromSkillssh(skill.source, skill.skill_id);
-      await Promise.all([refreshScenarios(), refreshManagedSkills()]);
+      await Promise.all([refreshPresets(), refreshManagedSkills()]);
       toast.success(t("install.toast.success", { name: displayName }), {
         id: toastId,
         action: {
@@ -531,7 +531,7 @@ export function InstallSkills() {
         gitPreview.temp_dir,
         selected.map((s) => ({ rel_path: s.rel_path, name: s.name }))
       );
-      await Promise.all([refreshScenarios(), refreshManagedSkills()]);
+      await Promise.all([refreshPresets(), refreshManagedSkills()]);
       toast.success(t("install.toast.success", { name: selected.map((s) => s.name).join(", ") }));
       setGitUrl("");
       setGitPreview(null);
@@ -555,7 +555,7 @@ export function InstallSkills() {
       }
       toast.success(t("install.scan.importedOne", { name }));
       const results = await Promise.allSettled([
-        refreshScenarios(),
+        refreshPresets(),
         refreshManagedSkills(),
         runScanSilent(),
       ]);
@@ -580,7 +580,7 @@ export function InstallSkills() {
       }
       toast.success(t("install.scan.importedAll"));
       const results = await Promise.allSettled([
-        refreshScenarios(),
+        refreshPresets(),
         refreshManagedSkills(),
         runScanSilent(),
       ]);

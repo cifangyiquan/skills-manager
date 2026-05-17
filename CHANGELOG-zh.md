@@ -9,10 +9,11 @@
 
 ### 新增
 - **`skills-manager-cli` 写命令** —— CLI 现在可以让 Agent 完整管理 skills：`install`（本地路径 / git URL / `owner/repo[@skill]` 简写）、`update`、`check`、`remove`、`enable`、`disable`、`sync`、`search`（skills.sh 市场，无需 API Key）、`adopt`（把 Agent 目录里已存在的 skill 收编进中央库）、`tag add/remove/list`。所有命令支持 `--json`；`remove` / `sync` / `adopt` 支持 `--dry-run`；`remove` 必须显式带 `--yes`。
-- **`scenarios add-skill` / `remove-skill` CLI 命令** —— 在命令行管理 scenario 包含哪些 skill。
+- **`presets add-skill` / `remove-skill` CLI 命令** —— 在命令行管理 preset 包含哪些 skill。
 - **`manage-skills` skill**（`assets/manage-skills/SKILL.md`）—— 放入 `~/.claude/skills/` 后，Claude Code（及其它 Agent）会优先用 `skills-manager-cli`，而不是直接往某一个 Agent 目录里装 skill。
 
 ### 变更
+- **用户可见的 scenario 术语统一改为 preset** —— Tauri 命令（如 `apply_preset_to_default`）、CLI 子命令（`skills-manager-cli presets ...`）、CLI JSON 字段（`preset_id` / `preset_name`）、前端类型和 i18n key 现在都使用 `preset`。CLI 会保留 `scenarios`、`--scenario`、`--sync-scenario` 作为隐藏兼容别名一个版本。内部 Rust 类型、SQLite schema 和 Git Backup metadata 仍保留 `scenario` 以保证兼容。
 - **被禁用的 skill 现在会被 sync 跳过** —— 之前 `enabled` 字段写入数据库但没人读，UI 里"禁用"形同虚设。从本版本起，禁用的 skill 不会再被同步写入 Agent 目录（已经同步出去的副本**不会**自动移除，需要 `skills remove` 主动清理）。
 
 ### 移除

@@ -9,10 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **`skills-manager-cli` write commands** — the CLI now lets agents fully manage skills: `install` (local path / git URL / `owner/repo[@skill]` shorthand), `update`, `check`, `remove`, `enable`, `disable`, `sync`, `search` (skills.sh marketplace, no API key), `adopt` (pull existing skills from agent directories into the central library), and `tag add/remove/list`. Every command supports `--json`; `remove`, `sync`, and `adopt` support `--dry-run`. `remove` always requires `--yes`.
-- **`scenarios add-skill` / `remove-skill` CLI commands** — manage which skills belong to a scenario from the command line.
+- **`presets add-skill` / `remove-skill` CLI commands** — manage which skills belong to a preset from the command line.
 - **`manage-skills` skill** (`assets/manage-skills/SKILL.md`) — drop into `~/.claude/skills/` so Claude Code (and other agents) prefers `skills-manager-cli` over installing skills directly into one agent's directory.
 
 ### Changed
+- **User-facing scenario terminology is now preset terminology** — Tauri commands (`apply_preset_to_default`, etc.), CLI subcommands (`skills-manager-cli presets ...`), CLI JSON fields (`preset_id` / `preset_name`), frontend types, and i18n keys now consistently use `preset`. The CLI keeps `scenarios`, `--scenario`, and `--sync-scenario` as hidden backward-compatible aliases for one release. Internal Rust types, the SQLite schema, and Git Backup metadata still use `scenario` for compatibility.
 - **Disabled skills are now skipped by sync** — previously the `enabled` flag was set but never read, so disabling a skill in the UI did nothing. Disabling now actually prevents future syncs from writing the skill into agent directories (existing copies are NOT removed automatically; use `skills remove` for that).
 
 ### Removed

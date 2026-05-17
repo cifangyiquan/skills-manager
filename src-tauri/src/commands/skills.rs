@@ -60,7 +60,7 @@ pub struct ManagedSkillDto {
     pub updated_at: i64,
     pub status: String,
     pub targets: Vec<TargetDto>,
-    pub scenario_ids: Vec<String>,
+    pub preset_ids: Vec<String>,
     pub tags: Vec<String>,
 }
 
@@ -167,14 +167,14 @@ pub async fn get_managed_skills(
 }
 
 #[tauri::command]
-pub async fn get_skills_for_scenario(
-    scenario_id: String,
+pub async fn get_skills_for_preset(
+    preset_id: String,
     store: State<'_, Arc<SkillStore>>,
 ) -> Result<Vec<ManagedSkillDto>, AppError> {
     let store = store.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let skills = store
-            .get_skills_for_scenario(&scenario_id)
+            .get_skills_for_scenario(&preset_id)
             .map_err(AppError::db)?;
         let all_targets = store.get_all_targets().map_err(AppError::db)?;
         let tags_map = store.get_tags_map().map_err(AppError::db)?;
@@ -1048,7 +1048,7 @@ fn managed_skill_to_dto(
         })
         .collect();
 
-    let scenario_ids = store.get_scenarios_for_skill(&skill.id).unwrap_or_default();
+    let preset_ids = store.get_scenarios_for_skill(&skill.id).unwrap_or_default();
     let tags = tags_map.get(&skill.id).cloned().unwrap_or_default();
 
     // Prefer description from SKILL.md so the list view reflects edits made
@@ -1080,7 +1080,7 @@ fn managed_skill_to_dto(
         updated_at: skill.updated_at,
         status: skill.status,
         targets,
-        scenario_ids,
+        preset_ids,
         tags,
     }
 }
@@ -1332,9 +1332,9 @@ pub fn store_installed_skill_unlocked(
 
         if let Some(scenario_id) = active_scenario_id {
             if let Err(e) =
-                super::scenarios::sync_skill_to_active_scenario(store, scenario_id, &existing.id)
+                super::presets::sync_skill_to_active_preset(store, scenario_id, &existing.id)
             {
-                log::warn!("Failed to sync reinstalled skill to scenario: {e}");
+                log::warn!("Failed to sync reinstalled skill to preset: {e}");
             }
         }
 
@@ -1374,8 +1374,8 @@ pub fn store_installed_skill_unlocked(
     sync_metadata::write_all_from_db_unlocked(store).map_err(AppError::db)?;
 
     if let Some(scenario_id) = active_scenario_id {
-        if let Err(e) = super::scenarios::sync_skill_to_active_scenario(store, scenario_id, &id) {
-            log::warn!("Failed to sync newly installed skill to scenario: {e}");
+        if let Err(e) = super::presets::sync_skill_to_active_preset(store, scenario_id, &id) {
+            log::warn!("Failed to sync newly installed skill to preset: {e}");
         }
     }
 

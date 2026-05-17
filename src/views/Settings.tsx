@@ -161,11 +161,11 @@ function AgentGroupDnd({ items, sensors, dragLabel, onDragEnd, renderAgentCard }
 
 export function Settings() {
   const { t, i18n } = useTranslation();
-  const { tools, scenarios, refreshTools, openHelp } = useApp();
+  const { tools, presets, refreshTools, openHelp } = useApp();
   const [togglingTools, setTogglingTools] = useState<Set<string>>(new Set());
   const { theme, setTheme } = useThemeContext();
   const [syncMode, setSyncMode] = useState("symlink");
-  const [defaultScenario, setDefaultScenario] = useState("");
+  const [defaultPreset, setDefaultPreset] = useState("");
   const [closeAction, setCloseAction] = useState("");
   const [showTrayIcon, setShowTrayIcon] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -313,7 +313,7 @@ export function Settings() {
 
   useEffect(() => {
     api.getSettings("sync_mode").then((v) => { if (v) setSyncMode(v); });
-    api.getSettings("default_scenario").then((v) => { if (v) setDefaultScenario(v); });
+    api.getSettings("default_scenario").then((v) => { if (v) setDefaultPreset(v); });
     api.getSettings("proxy_url").then((v) => { setProxyInput(v ?? ""); });
     api.getSettings("close_action").then((v) => { setCloseAction(v ?? ""); });
     api.getSettings("show_tray_icon").then((v) => {
@@ -382,8 +382,8 @@ export function Settings() {
     await api.setSettings("sync_mode", mode);
   };
 
-  const handleDefaultScenarioChange = async (id: string) => {
-    setDefaultScenario(id);
+  const handleDefaultPresetChange = async (id: string) => {
+    setDefaultPreset(id);
     await api.setSettings("default_scenario", id);
   };
 
@@ -1313,20 +1313,20 @@ export function Settings() {
               </div>
             </div>
 
-            {/* Default scenario */}
+            {/* Default preset */}
             <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
-                <h3 className="text-[13px] text-secondary font-medium mb-0.5">{t("settings.defaultScenario")}</h3>
-                <p className="text-[13px] text-muted">{t("settings.defaultScenarioDesc")}</p>
+                <h3 className="text-[13px] text-secondary font-medium mb-0.5">{t("settings.defaultPreset")}</h3>
+                <p className="text-[13px] text-muted">{t("settings.defaultPresetDesc")}</p>
               </div>
               <div className="relative shrink-0">
                 <select
-                  value={defaultScenario}
-                  onChange={(e) => handleDefaultScenarioChange(e.target.value)}
+                  value={defaultPreset}
+                  onChange={(e) => handleDefaultPresetChange(e.target.value)}
                   className={selectClass}
                 >
                   <option value="">—</option>
-                  {scenarios.map((s) => (
+                  {presets.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
