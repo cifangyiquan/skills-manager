@@ -19,6 +19,7 @@ import {
   SquareCheck,
   Square,
   Plus,
+  CircleSlash,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
@@ -35,7 +36,7 @@ import { ProjectAgentDots } from "../components/ProjectAgentDots";
 import { PresetBar } from "../components/PresetBar";
 import { SkillMarkdown } from "../components/SkillMarkdown";
 import { DocumentDiffViewer } from "../components/DocumentDiffViewer";
-import { getTagActiveColor, getTagColor } from "../lib/skillTags";
+import { getTagActiveColor, getTagColor, UNTAGGED_FILTER } from "../lib/skillTags";
 import { cn } from "../utils";
 import * as api from "../lib/tauri";
 import type { ProjectSkill, ManagedSkill, ProjectAgentTarget } from "../lib/tauri";
@@ -300,7 +301,12 @@ export function ProjectDetail() {
         skill.name.toLowerCase().includes(search.toLowerCase()) ||
         (skill.description || "").toLowerCase().includes(search.toLowerCase());
       if (!matchesSearch) return false;
-      if (tagFilters.size > 0 && !skill.tags.some((tag) => tagFilters.has(tag))) return false;
+      if (tagFilters.size > 0) {
+        const wantUntagged = tagFilters.has(UNTAGGED_FILTER);
+        const matchUntagged = wantUntagged && skill.tags.length === 0;
+        const matchTag = skill.tags.some((tag) => tagFilters.has(tag));
+        if (!matchUntagged && !matchTag) return false;
+      }
       if (filterMode === "enabled") return skill.enabledCount > 0;
       if (filterMode === "disabled") return skill.enabledCount === 0;
       return true;
@@ -920,6 +926,31 @@ export function ProjectDetail() {
             >
               {t("mySkills.tags.allTags")}
             </button>
+            {groupedSkills.some((s) => s.tags.length === 0) && (() => {
+              const isActive = tagFilters.has(UNTAGGED_FILTER);
+              return (
+                <button
+                  onClick={() => {
+                    setTagFilters((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(UNTAGGED_FILTER)) next.delete(UNTAGGED_FILTER);
+                      else next.add(UNTAGGED_FILTER);
+                      return next;
+                    });
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-medium transition-colors",
+                    isActive
+                      ? "bg-surface-active text-primary"
+                      : "border border-dashed border-border text-muted hover:text-secondary"
+                  )}
+                  title={t("mySkills.tags.untagged")}
+                >
+                  <CircleSlash className="h-3 w-3" />
+                  {t("mySkills.tags.untagged")}
+                </button>
+              );
+            })()}
             {allTags.map((tag) => {
               const active = tagFilters.has(tag);
               return (

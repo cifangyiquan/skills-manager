@@ -12,6 +12,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  CircleSlash,
   Trash2,
   Upload,
   X,
@@ -29,7 +30,7 @@ import { DocumentDiffViewer } from "../components/DocumentDiffViewer";
 import * as api from "../lib/tauri";
 import type { ManagedSkill, ProjectSkill, ToolInfo } from "../lib/tauri";
 import { getErrorMessage } from "../lib/error";
-import { getTagActiveColor, getTagColor } from "../lib/skillTags";
+import { getTagActiveColor, getTagColor, UNTAGGED_FILTER } from "../lib/skillTags";
 
 function compactHomePath(path: string) {
   return path.replace(/^\/Users\/[^/]+/, "~");
@@ -498,7 +499,12 @@ export function GlobalWorkspace() {
             (skill.description || "").toLowerCase().includes(q);
           if (!matchesQuery) return false;
         }
-        if (tagFilters.size > 0 && !skill.tags.some((tag) => tagFilters.has(tag))) return false;
+        if (tagFilters.size > 0) {
+          const wantUntagged = tagFilters.has(UNTAGGED_FILTER);
+          const matchUntagged = wantUntagged && skill.tags.length === 0;
+          const matchTag = skill.tags.some((tag) => tagFilters.has(tag));
+          if (!matchUntagged && !matchTag) return false;
+        }
         return true;
       })
       .sort((a, b) => {
@@ -939,6 +945,31 @@ export function GlobalWorkspace() {
             >
               {t("mySkills.tags.allTags")}
             </button>
+            {localSkills.some((s) => s.tags.length === 0) && (() => {
+              const isActive = tagFilters.has(UNTAGGED_FILTER);
+              return (
+                <button
+                  onClick={() => {
+                    setTagFilters((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(UNTAGGED_FILTER)) next.delete(UNTAGGED_FILTER);
+                      else next.add(UNTAGGED_FILTER);
+                      return next;
+                    });
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-medium transition-colors",
+                    isActive
+                      ? "bg-surface-active text-primary"
+                      : "border border-dashed border-border text-muted hover:text-secondary"
+                  )}
+                  title={t("mySkills.tags.untagged")}
+                >
+                  <CircleSlash className="h-3 w-3" />
+                  {t("mySkills.tags.untagged")}
+                </button>
+              );
+            })()}
             {allLocalTags.map((tag) => {
               const active = tagFilters.has(tag);
               return (

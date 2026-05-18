@@ -211,6 +211,7 @@
     "tags": {
       "filter": "標籤",
       "allTags": "全部標籤",
+      "untagged": "無標籤",
       "addTag": "新增標籤...",
       "noTags": "無標籤",
       "tagAdded": "標籤已新增",

@@ -227,6 +227,7 @@
     "tags": {
       "filter": "Tags",
       "allTags": "All Tags",
+      "untagged": "Untagged",
       "addTag": "Add tag...",
       "noTags": "No tags",
       "tagAdded": "Tag added",
