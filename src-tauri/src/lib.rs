@@ -419,6 +419,13 @@ pub fn run() {
                 step.elapsed().as_millis()
             );
 
+            let step = Instant::now();
+            core::skill_auto_updater::start(app.handle().clone(), store_for_setup.clone());
+            log::info!(
+                "startup: skill auto-updater spawned in {} ms",
+                step.elapsed().as_millis()
+            );
+
             // Intercept window close — let frontend decide (close vs hide to tray)
             // When QUITTING is set, allow the close to proceed so the process fully exits.
             let step = Instant::now();

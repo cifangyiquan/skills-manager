@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Skill auto-update check** — A new **Settings → Skill Auto-Update** section runs a background update check every 6 hours / daily / weekly (off by default). When upstream changes are detected, a toast and the **Update All** badge in My Skills light up; skill contents are never modified silently, you still confirm the actual update. The same panel shows the last-check timestamp and a **Check Now** button.
+
 ## [1.21.0] - 2026-05-18
 
 ### Added

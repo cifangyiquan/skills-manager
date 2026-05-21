@@ -49,6 +49,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { listen } from "@tauri-apps/api/event";
 import { writeText as clipboardWriteText } from "@tauri-apps/plugin-clipboard-manager";
 import { check as checkUpdater } from "@tauri-apps/plugin-updater";
 import { open as dialogOpen, confirm as dialogConfirm } from "@tauri-apps/plugin-dialog";
@@ -161,7 +162,7 @@ function AgentGroupDnd({ items, sensors, dragLabel, onDragEnd, renderAgentCard }
 
 export function Settings() {
   const { t, i18n } = useTranslation();
-  const { tools, presets, refreshTools, openHelp } = useApp();
+  const { tools, presets, refreshTools, refreshManagedSkills, openHelp } = useApp();
   const [togglingTools, setTogglingTools] = useState<Set<string>>(new Set());
   const { theme, setTheme } = useThemeContext();
   const [syncMode, setSyncMode] = useState("symlink");
@@ -187,6 +188,9 @@ export function Settings() {
   const [proxyInput, setProxyInput] = useState("");
   const [proxySaving, setProxySaving] = useState(false);
   const [textSize, setTextSize] = useState("default");
+  const [autoUpdateInterval, setAutoUpdateInterval] = useState("off");
+  const [autoUpdateLastRun, setAutoUpdateLastRun] = useState<string | null>(null);
+  const [autoUpdateChecking, setAutoUpdateChecking] = useState(false);
   // Agent path editing
   const [editingPathKey, setEditingPathKey] = useState<string | null>(null);
   const [editingPathValue, setEditingPathValue] = useState("");
@@ -321,6 +325,15 @@ export function Settings() {
       setShowTrayIcon(!(normalized === "false" || normalized === "0" || normalized === "no" || normalized === "off"));
     });
     api.getSettings("text_size").then((v) => { if (v) { setTextSize(v); applyTextSize(v); } });
+    api.getSettings("auto_update_check_interval").then((v) => { if (v) setAutoUpdateInterval(v); });
+    // The `skills-auto-updated` listener may populate this concurrently, so
+    // keep whichever timestamp is newer rather than blindly overwriting.
+    api.getSettings("auto_update_last_run_at").then((v) => {
+      if (!v) return;
+      setAutoUpdateLastRun((prev) =>
+        prev && Date.parse(prev) >= Date.parse(v) ? prev : v
+      );
+    });
     api.getCentralRepoPath().then((path) => {
       setCentralRepoPath(path);
       setCentralRepoPathInput(path);
@@ -413,6 +426,52 @@ export function Settings() {
     applyTextSize(size);
     api.setSettings("text_size", size);
   };
+
+  const handleAutoUpdateIntervalChange = async (value: string) => {
+    setAutoUpdateInterval(value);
+    await api.setSettings("auto_update_check_interval", value);
+  };
+
+  const handleAutoUpdateCheckNow = async () => {
+    setAutoUpdateChecking(true);
+    try {
+      await api.checkAllSkillUpdates(true);
+      const now = new Date().toISOString();
+      // Record the run so the background scheduler treats this as the most
+      // recent check and waits a full interval before its next round.
+      await api.setSettings("auto_update_last_run_at", now);
+      setAutoUpdateLastRun(now);
+      // Refresh the shared skill list so the My Skills badge and the
+      // notification toast pick up newly-discovered updates immediately,
+      // not just on the next route change.
+      await refreshManagedSkills();
+      toast.success(t("settings.autoUpdate.checkDone"));
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, t("common.error")));
+    } finally {
+      setAutoUpdateChecking(false);
+    }
+  };
+
+  // Keep the last-run timestamp in sync with the background scheduler so
+  // the user does not see a stale value if they leave Settings open. The
+  // Rust scheduler emits this event BEFORE it persists `last_run_at`, so
+  // we read the timestamp directly from the payload rather than re-querying
+  // the DB (which would race the persist).
+  useEffect(() => {
+    type AutoUpdatedPayload = { ran_at?: string };
+    const unlistenPromise = listen<AutoUpdatedPayload>("skills-auto-updated", (event) => {
+      const ranAt = event.payload?.ran_at;
+      if (ranAt) {
+        setAutoUpdateLastRun(ranAt);
+      }
+    });
+    return () => {
+      unlistenPromise
+        .then((unlisten) => unlisten())
+        .catch(() => {});
+    };
+  }, []);
 
   const handleOpenRepoInFinder = async () => {
     try {
@@ -1443,6 +1502,54 @@ export function Settings() {
                   {t("common.save")}
                 </button>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Skill auto-update */}
+        <section>
+          <h2 className="app-section-title mb-3">
+            {t("settings.autoUpdate.title")}
+          </h2>
+          <div className="app-panel overflow-hidden divide-y divide-border-subtle">
+            <div className="px-4 py-3">
+              <h3 className="text-[13px] text-secondary font-medium mb-0.5">
+                {t("settings.autoUpdate.intervalLabel")}
+              </h3>
+              <p className="text-[13px] text-muted mb-2">
+                {t("settings.autoUpdate.intervalDesc")}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={autoUpdateInterval}
+                  onChange={(e) => handleAutoUpdateIntervalChange(e.target.value)}
+                  className={`${fieldClass} max-w-xs`}
+                >
+                  <option value="off">{t("settings.autoUpdate.intervalOff")}</option>
+                  <option value="6h">{t("settings.autoUpdate.interval6h")}</option>
+                  <option value="24h">{t("settings.autoUpdate.interval24h")}</option>
+                  <option value="7d">{t("settings.autoUpdate.interval7d")}</option>
+                </select>
+                <button
+                  onClick={handleAutoUpdateCheckNow}
+                  disabled={autoUpdateChecking}
+                  className={`${actionButtonClass} bg-surface-hover hover:bg-surface-active text-tertiary border-border`}
+                >
+                  {autoUpdateChecking ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3 h-3" />
+                  )}
+                  {t("settings.autoUpdate.checkNow")}
+                </button>
+              </div>
+              <p className="mt-2 text-[12px] text-muted">
+                {autoUpdateLastRun
+                  ? t("settings.autoUpdate.lastRun", {
+                      time: new Date(autoUpdateLastRun).toLocaleString(),
+                    })
+                  : t("settings.autoUpdate.lastRunNever")}
+              </p>
             </div>
           </div>
         </section>

@@ -893,6 +893,7 @@ pub async fn check_skill_update(
     let store = store.inner().clone();
     let proxy_url = store.proxy_url();
     tauri::async_runtime::spawn_blocking(move || {
+        let _lock = RepoLock::acquire("check skill update").map_err(AppError::db)?;
         check_skill_update_internal(
             &store,
             &skill_id,
@@ -921,6 +922,17 @@ pub async fn check_all_skill_updates(
         let mut failed = Vec::new();
 
         for skill_id in ids {
+            // Take the central-repo lock per skill so a concurrent manual
+            // install/update can't race the `update_status` write. Lock
+            // contention is reported as a per-skill failure so the caller
+            // knows the check didn't complete.
+            let _lock = match RepoLock::acquire("check skill update") {
+                Ok(lock) => lock,
+                Err(err) => {
+                    failed.push(format!("{skill_id}: {err}"));
+                    continue;
+                }
+            };
             if let Err(err) =
                 check_skill_update_internal(&store, &skill_id, force_check, proxy_url.as_deref())
             {

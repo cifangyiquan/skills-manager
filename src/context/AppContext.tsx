@@ -238,6 +238,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [refreshAppData]);
 
+  const notifyUpdatableSkills = useCallback((skills: ManagedSkill[]) => {
+    const updatable = skills
+      .filter((s) => s.update_status === "update_available")
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    if (updatable.length === 0) {
+      lastUpdateNotificationRef.current = null;
+      toast.dismiss(SKILL_UPDATE_TOAST_ID);
+      return;
+    }
+
+    const notificationSignature = updatable.map((skill) => skill.id).join("|");
+    if (lastUpdateNotificationRef.current === notificationSignature) {
+      return;
+    }
+
+    lastUpdateNotificationRef.current = notificationSignature;
+    toast.info(
+      i18n.t("mySkills.updateNotification", { count: updatable.length }),
+      {
+        id: SKILL_UPDATE_TOAST_ID,
+        duration: 8000,
+        action: {
+          label: i18n.t("mySkills.viewUpdates"),
+          onClick: () => {
+            setDetailSkillId(null);
+            if (!window.location.pathname.endsWith("/my-skills")) {
+              window.history.pushState(null, "", "/my-skills");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }
+          },
+        },
+      }
+    );
+  // SKILL_UPDATE_TOAST_ID is a stable string constant defined in the component.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Auto-check skill updates on startup (non-blocking, silent)
   useEffect(() => {
     if (loading || managedSkills.length === 0) return;
@@ -253,44 +291,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .then(async () => {
           const skills = await api.getManagedSkills();
           setManagedSkills(skills);
-          const updatable = skills
-            .filter((s) => s.update_status === "update_available")
-            .sort((a, b) => a.id.localeCompare(b.id));
-
-          if (updatable.length === 0) {
-            lastUpdateNotificationRef.current = null;
-            toast.dismiss(SKILL_UPDATE_TOAST_ID);
-            return;
-          }
-
-          const notificationSignature = updatable.map((skill) => skill.id).join("|");
-          if (lastUpdateNotificationRef.current === notificationSignature) {
-            return;
-          }
-
-          lastUpdateNotificationRef.current = notificationSignature;
-          if (updatable.length > 0) {
-            toast.info(
-              i18n.t("mySkills.updateNotification", { count: updatable.length }),
-              {
-                id: SKILL_UPDATE_TOAST_ID,
-                duration: 8000,
-                action: {
-                  label: i18n.t("mySkills.viewUpdates"),
-                  onClick: () => {
-                    setDetailSkillId(null);
-                    // Navigate to My Skills without opening a specific detail panel.
-                    // AppProvider is outside Router, so use pushState + popstate
-                    // to preserve SPA state.
-                    if (!window.location.pathname.endsWith("/my-skills")) {
-                      window.history.pushState(null, "", "/my-skills");
-                      window.dispatchEvent(new PopStateEvent("popstate"));
-                    }
-                  },
-                },
-              }
-            );
-          }
+          notifyUpdatableSkills(skills);
+          // Treat the startup check as an auto-update round so the backend
+          // scheduler doesn't immediately re-run the same checks (and
+          // potentially race on the same `update_status` writes).
+          api.setSettings("auto_update_last_run_at", new Date().toISOString())
+            .catch(() => {});
         })
         .catch(() => {}) // silent failure
         .finally(() => {
@@ -300,6 +306,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
+
+  // Listen for background auto-update rounds emitted by the Rust scheduler.
+  useEffect(() => {
+    const unlistenPromise = listen("skills-auto-updated", async () => {
+      try {
+        const skills = await api.getManagedSkills();
+        setManagedSkills(skills);
+        notifyUpdatableSkills(skills);
+      } catch (error) {
+        console.error("Failed to refresh after skills-auto-updated:", error);
+      }
+    });
+    return () => {
+      unlistenPromise
+        .then((unlisten) => unlisten())
+        .catch((error) => {
+          console.error("Failed to unlisten skills-auto-updated:", error);
+        });
+    };
+  }, [notifyUpdatableSkills]);
 
   return (
     <AppContext.Provider
