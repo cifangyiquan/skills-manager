@@ -11,11 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Library card status indicator** — Removed the small circle in the top-left of each Library skill card. It conflated "synced to any agent" with preset membership, which the green left border already shows; per-agent sync status remains in the bottom-right agent dots.
 - **Discoverable agent toggle in Settings** — The tiny status icon next to each agent has been replaced with a macOS-style switch (green = enabled, gray = disabled). The previous icon looked like a status badge, so users didn't realize they could click it to enable or disable an agent.
 
-### Fixed
-- 
-
-### Removed
-- 
 ## [1.22.0] - 2026-05-21
 
 ### User-facing
